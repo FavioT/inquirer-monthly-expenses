@@ -1,9 +1,14 @@
+import sqlite3
+import sys
+from typing import Optional
+
 import typer
 from rich.console import Console
 from rich.table import Table
 from datetime import datetime
 import db
 from cli_interactiva import menu_principal
+from formato import formatear_monto
 
 app = typer.Typer(help="Control mensual de pagos recurrentes.")
 console = Console()
@@ -24,8 +29,10 @@ def nuevo_servicio(
     try:
         db.agregar_servicio(nombre, monto_estimado)
         console.print(f"[bold green]✓[/bold green] Servicio '[bold]{nombre}[/bold]' agregado a la lista recurrente.")
-    except Exception:
+    except sqlite3.IntegrityError:
         console.print(f"[bold red]✗[/bold red] El servicio '[bold]{nombre}[/bold]' ya existe.")
+    except ValueError as error:
+        raise typer.BadParameter(str(error)) from error
 
 @app.command("servicios")
 def listar_servicios():
@@ -41,13 +48,13 @@ def listar_servicios():
     table.add_column("Monto Est.", justify="right")
 
     for s_id, nombre, monto in servicios:
-        table.add_row(str(s_id), nombre, f"${monto:,.2f}")
+        table.add_row(str(s_id), nombre, formatear_monto(monto))
 
     console.print(table)
 
 @app.command("mes")
 def ver_mes(
-    periodo: str = typer.Option(
+    periodo: Optional[str] = typer.Option(
         None, 
         "--periodo", "-p", 
         help="Periodo en formato YYYY-MM (por defecto el mes actual)"
@@ -59,6 +66,8 @@ def ver_mes(
     """
     if not periodo:
         periodo = datetime.now().strftime("%Y-%m")
+    if not db.es_periodo_valido(periodo):
+        raise typer.BadParameter("El período debe ser un mes válido en formato YYYY-MM.")
 
     pagos = db.obtener_pagos_mes(periodo)
 
@@ -90,19 +99,22 @@ def ver_mes(
             checkbox,
             str(pago_id),
             servicio,
-            f"${monto:,.2f}",
+            formatear_monto(monto),
             estado_txt
         )
 
     console.print(table)
-    console.print(f"Progreso: [green]${total_pagado:,.2f}[/green] de [bold]${total_mes:,.2f}[/bold]\n")
+    console.print(f"Progreso: [green]{formatear_monto(total_pagado)}[/green] de [bold]{formatear_monto(total_mes)}[/bold]\n")
 
 @app.command("check")
-def marcar_desmarcar(pago_id: int, periodo: str = None):
+def marcar_desmarcar(pago_id: int, periodo: Optional[str] = None):
     """
     Alterna el estado (checkbox) de un pago usando su ID.
     Ejemplo: python main.py check 2
     """
+    if periodo is not None and not db.es_periodo_valido(periodo):
+        raise typer.BadParameter("El período debe ser un mes válido en formato YYYY-MM.")
+
     exito = db.toggle_pago(pago_id)
     if exito:
         console.print(f"[bold green]✓[/bold green] Estado del pago ID [bold]{pago_id}[/bold] actualizado.")
@@ -126,4 +138,7 @@ def borrar_servicio(servicio_id: int):
         console.print(f"[bold red]✗[/bold red] No se encontró ningún servicio con el ID {servicio_id}.")
 
 if __name__ == "__main__":
-    menu_principal()
+    if len(sys.argv) == 1:
+        menu_principal()
+    else:
+        app()

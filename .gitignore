@@ -6,17 +6,39 @@ ENV/
 env.bak/
 venv.bak/
 
+# === Variables de entorno ===
+.env
+.env.*
+!.env.example
+
 # === Base de Datos Local ===
 # Evita subir tus datos reales o de prueba al repositorio
 *.db
+*.sqlite
 *.sqlite3
 *.db-journal
+*.db-wal
+*.db-shm
 
 # === Archivos y cachés de Python ===
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
+.Python
+
+# === Pruebas y análisis ===
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# === Empaquetado ===
+build/
+dist/
+*.egg-info/
 
 # === Configuraciones de Editores e IDEs ===
 .vscode/

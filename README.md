@@ -1,33 +1,36 @@
-# 💸 Gestor de Pagos Mensuales (CLI)
+# Gestor de Pagos Mensuales
 
-Una herramienta interactiva de línea de comandos (CLI/TUI) desarrollada en Python para llevar el control de tus gastos y servicios recurrentes mes a mes mediante una lista de verificación (*checkbox*).
+Aplicación de terminal para registrar servicios recurrentes, marcar pagos por mes y consultar reportes. Los datos se guardan localmente en SQLite (`pagos.db`).
 
-![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
-![SQLite](https://img.shields.io/badge/Database-SQLite-003B57.svg)
-![InquirerPy](https://img.shields.io/badge/Interface-InquirerPy-orange.svg)
+## Requisitos
 
----
+- Python 3.8 o superior.
 
-## 🚀 Características
+## Instalación
 
-- **Plantilla de servicios fijos:** Registra tus servicios recurrentes una sola vez (ej: *Luz*, *Internet*, *Alquiler*).
-- **Checklist por mes:** Interfaz navegable con teclado para tildar `[x]` o destildar `[ ]` cada pago en el mes correspondiente sin afectar períodos anteriores o futuros.
-- **Reportes financieros:** Visualización clara de gastos pagados vs. pendientes, junto con los totales del mes en curso.
-- **Base de datos local:** Todo se almacena localmente en SQLite (`pagos.db`).
-- **Navegación por menús:** Interfaz interactiva para la terminal usando **InquirerPy** y formato con **Rich**.
+```powershell
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+py -m pip install -r requisitos.txt
+```
 
----
+## Uso
 
-## 🛠️ Requisitos Previos
+Inicia el menú interactivo:
 
-- **Python** 3.8 o superior.
-- Git (opcional).
+```powershell
+py main.py
+```
 
----
+También puedes usar los comandos:
 
-## 📦 Instalación y Configuración
+```powershell
+py main.py --help
+py main.py servicio-nuevo "Internet" 25000
+py main.py servicios
+py main.py mes --periodo 2026-10
+py main.py check 1
+py main.py servicio-eliminar 1
+```
 
-1. **Clona el repositorio:**
-   ```bash
-   git clone [https://github.com/tu-usuario/gestor-pagos.git](https://github.com/tu-usuario/gestor-pagos.git)
-   cd gestor-pagos
+Los períodos deben usar el formato `YYYY-MM`, con un mes entre `01` y `12`. El monto estimado debe ser un número finito mayor o igual a cero.
