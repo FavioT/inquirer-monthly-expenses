@@ -1,0 +1,31 @@
+# === Entornos Virtuales ===
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# === Base de Datos Local ===
+# Evita subir tus datos reales o de prueba al repositorio
+*.db
+*.sqlite3
+*.db-journal
+
+# === Archivos y cachés de Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# === Configuraciones de Editores e IDEs ===
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# === Logs y Archivos Temporales ===
+*.log
+.DS_Store
+Thumbs.db
