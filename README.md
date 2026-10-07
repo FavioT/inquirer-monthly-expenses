@@ -1,12 +1,26 @@
 # Gestor de Pagos Mensuales
 
-Aplicación de terminal para registrar servicios recurrentes, marcar pagos por mes y consultar reportes. Los datos se guardan localmente en SQLite (`pagos.db`).
+Aplicación de terminal para organizar servicios recurrentes, registrar pagos por mes y consultar el avance de los gastos. Los datos se guardan localmente en SQLite, en el archivo `pagos.db`.
+
+## Funciones
+
+- Administra una lista de servicios recurrentes con su monto mensual estimado.
+- Marca o desmarca pagos desde un checklist interactivo por mes.
+- Consulta reportes con pagos realizados, pendientes y totales.
+- Muestra el avance mensual y el total estimado de los servicios.
+- Presenta los importes con punto para miles y coma para decimales; por ejemplo, `$150.000,00`.
+- Mantiene el estado de pago separado para cada mes.
 
 ## Requisitos
 
 - Python 3.8 o superior.
+- Terminal compatible con menús interactivos.
 
 ## Instalación
+
+Desde la carpeta del proyecto, crea y activa un entorno virtual e instala las dependencias:
+
+### Windows (PowerShell)
 
 ```powershell
 py -m venv .venv
@@ -14,23 +28,63 @@ py -m venv .venv
 py -m pip install -r requisitos.txt
 ```
 
-## Uso
+### macOS o Linux
 
-Inicia el menú interactivo:
-
-```powershell
-py main.py
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requisitos.txt
 ```
 
-También puedes usar los comandos:
+## Uso interactivo
 
-```powershell
-py main.py --help
-py main.py servicio-nuevo "Internet" 25000
-py main.py servicios
-py main.py mes --periodo 2026-10
-py main.py check 1
-py main.py servicio-eliminar 1
+Inicia el menú:
+
+```bash
+python main.py
 ```
 
-Los períodos deben usar el formato `YYYY-MM`, con un mes entre `01` y `12`. El monto estimado debe ser un número finito mayor o igual a cero.
+Desde el menú puedes marcar los pagos del mes actual o de otro período, ver reportes y servicios, agregar servicios y eliminar servicios junto con su historial.
+
+En el checklist, usa las flechas para navegar, **Espacio** para marcar o desmarcar un pago y **Enter** para guardar.
+
+## Comandos
+
+Consulta todos los comandos disponibles:
+
+```bash
+python main.py --help
+```
+
+Ejemplos:
+
+```bash
+# Agregar un servicio con monto mensual estimado
+python main.py servicio-nuevo "Internet" 25000
+
+# Listar los servicios recurrentes
+python main.py servicios
+
+# Ver los pagos de un período (YYYY-MM)
+python main.py mes --periodo 2026-10
+
+# Alternar el estado de un pago por su ID
+python main.py check 1
+
+# Eliminar un servicio y sus registros históricos por ID
+python main.py servicio-eliminar 1
+```
+
+Los períodos deben tener el formato `YYYY-MM`, con un mes entre `01` y `12`. Los montos deben ser números finitos mayores o iguales a cero.
+
+## Datos y privacidad
+
+La base de datos `pagos.db` se crea automáticamente junto a los archivos de la aplicación. No la compartas si contiene información personal; los archivos de base de datos están excluidos de Git mediante `.gitignore`.
+
+## Pruebas
+
+Ejecuta las pruebas incluidas con:
+
+```bash
+python -m unittest discover -s tests -v
+```
