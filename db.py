@@ -32,6 +32,13 @@ def _validar_periodo(mes_año: str) -> None:
     if not es_periodo_valido(mes_año):
         raise ValueError("El período debe tener un mes válido en formato YYYY-MM.")
 
+def periodo_siguiente(mes_año: str) -> str:
+    """Devuelve el mes siguiente en formato YYYY-MM."""
+    _validar_periodo(mes_año)
+    año, mes = (int(parte) for parte in mes_año.split("-"))
+    if mes == 12:
+        return f"{año + 1:04d}-01"
+    return f"{año:04d}-{mes + 1:02d}"
 
 def _validar_monto(monto: float) -> None:
     if not math.isfinite(monto) or monto < 0:
@@ -63,6 +70,25 @@ def init_db():
                 UNIQUE(servicio_id, mes_año)
             )
         """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS historial_servicios (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                servicio_id INTEGER NOT NULL,
+                nombre TEXT NOT NULL,
+                monto REAL NOT NULL,
+                desde_periodo TEXT NOT NULL,
+                FOREIGN KEY (servicio_id) REFERENCES servicios (id),
+                UNIQUE(servicio_id, desde_periodo)
+            )
+        """)
+        cursor.execute("""
+            INSERT INTO historial_servicios (servicio_id, nombre, monto, desde_periodo)
+            SELECT s.id, s.nombre, s.monto_estimado, '0000-01'
+            FROM servicios s
+            WHERE NOT EXISTS (
+                SELECT 1 FROM historial_servicios h WHERE h.servicio_id = s.id
+            )
+        """)
         conn.commit()
 
 def agregar_servicio(nombre: str, monto: float):
@@ -76,6 +102,14 @@ def agregar_servicio(nombre: str, monto: float):
             "INSERT INTO servicios (nombre, monto_estimado) VALUES (?, ?)",
             (nombre, monto)
         )
+        servicio_id = cursor.lastrowid
+        cursor.execute(
+            """
+            INSERT INTO historial_servicios (servicio_id, nombre, monto, desde_periodo)
+            VALUES (?, ?, ?, '0000-01')
+            """,
+            (servicio_id, nombre, monto)
+        )
         conn.commit()
 
 def obtener_servicios():
@@ -84,10 +118,43 @@ def obtener_servicios():
         cursor.execute("SELECT id, nombre, monto_estimado FROM servicios ORDER BY nombre")
         return cursor.fetchall()
 
+def actualizar_servicio(servicio_id: int, nombre: str, monto: float, desde_periodo: str) -> bool:
+    """Actualiza un servicio y su versión vigente desde un período, sin alterar meses anteriores."""
+    if not nombre.strip():
+        raise ValueError("El nombre del servicio no puede estar vacío.")
+    _validar_monto(monto)
+    _validar_periodo(desde_periodo)
+
+    with _connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE servicios SET nombre = ?, monto_estimado = ? WHERE id = ?",
+            (nombre, monto, servicio_id)
+        )
+        if cursor.rowcount == 0:
+            return False
+
+        cursor.execute(
+            """
+            INSERT INTO historial_servicios (servicio_id, nombre, monto, desde_periodo)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(servicio_id, desde_periodo)
+            DO UPDATE SET nombre = excluded.nombre, monto = excluded.monto
+            """,
+            (servicio_id, nombre, monto, desde_periodo)
+        )
+        cursor.execute(
+            "UPDATE pagos_mes SET monto = ? WHERE servicio_id = ? AND mes_año >= ?",
+            (monto, servicio_id, desde_periodo)
+        )
+        conn.commit()
+        return True
+
 def eliminar_servicio(servicio_id: int):
     with _connection() as conn:
         cursor = conn.cursor()
         cursor.execute("DELETE FROM pagos_mes WHERE servicio_id = ?", (servicio_id,))
+        cursor.execute("DELETE FROM historial_servicios WHERE servicio_id = ?", (servicio_id,))
         cursor.execute("DELETE FROM servicios WHERE id = ?", (servicio_id,))
         eliminado = cursor.rowcount > 0
         conn.commit()
@@ -98,7 +165,19 @@ def generar_pagos_del_mes(mes_año: str):
     servicios = obtener_servicios()
     with _connection() as conn:
         cursor = conn.cursor()
-        for s_id, _, monto in servicios:
+        for s_id, _, _ in servicios:
+            cursor.execute(
+                """
+                SELECT nombre, monto FROM historial_servicios
+                WHERE servicio_id = ? AND desde_periodo <= ?
+                ORDER BY desde_periodo DESC LIMIT 1
+                """,
+                (s_id, mes_año)
+            )
+            version = cursor.fetchone()
+            if version is None:
+                raise RuntimeError(f"El servicio {s_id} no tiene una versión vigente para {mes_año}.")
+            _, monto = version
             cursor.execute("""
                 INSERT OR IGNORE INTO pagos_mes (servicio_id, mes_año, monto, pagado)
                 VALUES (?, ?, ?, 0)
@@ -110,11 +189,15 @@ def obtener_pagos_mes(mes_año: str):
     with _connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT p.id, s.nombre, p.monto, p.pagado
+            SELECT p.id, h.nombre, p.monto, p.pagado
             FROM pagos_mes p
-            JOIN servicios s ON p.servicio_id = s.id
+            JOIN historial_servicios h ON h.servicio_id = p.servicio_id
+                AND h.desde_periodo = (
+                    SELECT MAX(h2.desde_periodo) FROM historial_servicios h2
+                    WHERE h2.servicio_id = p.servicio_id AND h2.desde_periodo <= p.mes_año
+                )
             WHERE p.mes_año = ?
-            ORDER BY s.nombre
+            ORDER BY h.nombre
         """, (mes_año,))
         return cursor.fetchall()
 
@@ -148,21 +231,29 @@ def obtener_resumen_mes(mes_año: str):
         
         # Obtener pagados
         cursor.execute("""
-            SELECT s.nombre, p.monto 
+            SELECT h.nombre, p.monto
             FROM pagos_mes p 
-            JOIN servicios s ON p.servicio_id = s.id 
+            JOIN historial_servicios h ON h.servicio_id = p.servicio_id
+                AND h.desde_periodo = (
+                    SELECT MAX(h2.desde_periodo) FROM historial_servicios h2
+                    WHERE h2.servicio_id = p.servicio_id AND h2.desde_periodo <= p.mes_año
+                )
             WHERE p.mes_año = ? AND p.pagado = 1
-            ORDER BY s.nombre
+            ORDER BY h.nombre
         """, (mes_año,))
         pagados = cursor.fetchall()
 
         # Obtener no pagados (pendientes)
         cursor.execute("""
-            SELECT s.nombre, p.monto 
+            SELECT h.nombre, p.monto
             FROM pagos_mes p 
-            JOIN servicios s ON p.servicio_id = s.id 
+            JOIN historial_servicios h ON h.servicio_id = p.servicio_id
+                AND h.desde_periodo = (
+                    SELECT MAX(h2.desde_periodo) FROM historial_servicios h2
+                    WHERE h2.servicio_id = p.servicio_id AND h2.desde_periodo <= p.mes_año
+                )
             WHERE p.mes_año = ? AND p.pagado = 0
-            ORDER BY s.nombre
+            ORDER BY h.nombre
         """, (mes_año,))
         pendientes = cursor.fetchall()
 

@@ -157,6 +157,62 @@ def eliminar_servicio_prompt():
             else:
                 console.print("\n[yellow]El servicio ya no estaba disponible.[/yellow]\n")
 
+def modificar_servicio_prompt():
+    """Permite modificar un servicio recurrente desde el próximo mes."""
+    servicios = db.obtener_servicios()
+    if not servicios:
+        console.print("\n[yellow]No hay servicios para modificar.[/yellow]\n")
+        return
+
+    choices = [
+        Choice(value=s_id, name=f"{nombre} ({formatear_monto(monto)})")
+        for s_id, nombre, monto in servicios
+    ]
+    choices.append(Choice(value=None, name="← Cancelar"))
+
+    servicio_id = inquirer.select(
+        message="Selecciona el servicio que deseas modificar:",
+        choices=choices
+    ).execute()
+    if servicio_id is None:
+        return
+
+    servicio = next((item for item in servicios if item[0] == servicio_id), None)
+    if servicio is None:
+        console.print("\n[yellow]El servicio ya no está disponible.[/yellow]\n")
+        return
+
+    _, nombre_actual, monto_actual = servicio
+    nombre = inquirer.text(
+        message="Nombre del servicio:",
+        default=nombre_actual,
+        validate=lambda val: len(val.strip()) > 0 or "El nombre no puede estar vacío."
+    ).execute().strip()
+    monto_str = inquirer.text(
+        message="Monto mensual ($):",
+        default=str(monto_actual),
+        validate=lambda val: _monto_valido(val) or "Ingresa un monto finito mayor o igual a cero."
+    ).execute()
+    desde_periodo = db.periodo_siguiente(datetime.now().strftime("%Y-%m"))
+
+    try:
+        actualizado = db.actualizar_servicio(
+            servicio_id,
+            nombre,
+            float(monto_str),
+            desde_periodo
+        )
+    except sqlite3.IntegrityError:
+        console.print(f"\n[bold red]✗ Ya existe un servicio llamado '{nombre}'.[/bold red]\n")
+        return
+
+    if actualizado:
+        console.print(
+            f"\n[bold green]✓ Servicio actualizado desde {desde_periodo}.[/bold green]\n"
+        )
+    else:
+        console.print("\n[yellow]El servicio ya no está disponible.[/yellow]\n")
+
 
 def mostrar_servicios():
     """Muestra la plantilla de servicios recurrentes."""
@@ -258,6 +314,7 @@ def menu_principal():
                 Choice(value="otro_mes", name="◷  Consultar pagos de otro mes"),
                 Choice(value="ver_servicios", name="▦  Ver servicios recurrentes"),
                 Choice(value="nuevo_servicio", name="＋  Agregar un servicio"),
+                Choice(value="modificar_servicio", name="✎  Modificar un servicio recurrente"),
                 Choice(value="eliminar_servicio", name="−  Eliminar un servicio"),
                 Choice(value="salir", name="Salir")
             ],
@@ -279,6 +336,8 @@ def menu_principal():
             mostrar_servicios()
         elif opcion == "nuevo_servicio":
             agregar_servicio_prompt()
+        elif opcion == "modificar_servicio":
+            modificar_servicio_prompt()
         elif opcion == "eliminar_servicio":
             eliminar_servicio_prompt()
         elif opcion == "salir":

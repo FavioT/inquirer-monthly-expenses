@@ -5,6 +5,7 @@ Aplicación de terminal para organizar servicios recurrentes, registrar pagos po
 ## Funciones
 
 - Administra una lista de servicios recurrentes con su monto mensual estimado.
+- Modifica el nombre y monto de un servicio recurrente desde el próximo mes, conservando los períodos anteriores.
 - Marca o desmarca pagos desde un checklist interactivo por mes.
 - Consulta reportes con pagos realizados, pendientes y totales.
 - Muestra el avance mensual y el total estimado de los servicios.
@@ -44,7 +45,7 @@ Inicia el menú:
 python main.py
 ```
 
-Desde el menú puedes marcar los pagos del mes actual o de otro período, ver reportes y servicios, agregar servicios y eliminar servicios junto con su historial.
+Desde el menú puedes marcar los pagos del mes actual o de otro período, ver reportes y servicios, agregar, modificar o eliminar servicios junto con su historial. Las modificaciones de un servicio recurrente se aplican desde el próximo mes; el monto y nombre de los meses anteriores se conservan.
 
 En el checklist, usa las flechas para navegar, **Espacio** para marcar o desmarcar un pago y **Enter** para guardar.
 
@@ -73,6 +74,9 @@ python main.py check 1
 
 # Eliminar un servicio y sus registros históricos por ID
 python main.py servicio-eliminar 1
+
+# Modificar nombre y monto desde el próximo mes
+python main.py servicio-editar 1 "Internet" 30000
 ```
 
 Los períodos deben tener el formato `YYYY-MM`, con un mes entre `01` y `12`. Los montos deben ser números finitos mayores o iguales a cero.

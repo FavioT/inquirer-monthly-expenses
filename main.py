@@ -137,6 +137,27 @@ def borrar_servicio(servicio_id: int):
     else:
         console.print(f"[bold red]✗[/bold red] No se encontró ningún servicio con el ID {servicio_id}.")
 
+@app.command("servicio-editar")
+def editar_servicio(servicio_id: int, nombre: str, monto_estimado: float):
+    """
+    Modifica un servicio recurrente desde el próximo mes.
+    Ejemplo: python main.py servicio-editar 1 "Internet" 30000
+    """
+    desde_periodo = db.periodo_siguiente(datetime.now().strftime("%Y-%m"))
+    try:
+        exito = db.actualizar_servicio(servicio_id, nombre, monto_estimado, desde_periodo)
+    except sqlite3.IntegrityError:
+        raise typer.BadParameter(f"Ya existe un servicio llamado '{nombre}'.")
+    except ValueError as error:
+        raise typer.BadParameter(str(error)) from error
+
+    if exito:
+        console.print(
+            f"[bold green]✓[/bold green] Servicio actualizado desde [bold]{desde_periodo}[/bold]."
+        )
+    else:
+        console.print(f"[bold red]✗[/bold red] No se encontró ningún servicio con el ID {servicio_id}.")
+
 if __name__ == "__main__":
     if len(sys.argv) == 1:
         menu_principal()
