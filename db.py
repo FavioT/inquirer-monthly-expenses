@@ -40,6 +40,14 @@ def periodo_siguiente(mes_año: str) -> str:
         return f"{año + 1:04d}-01"
     return f"{año:04d}-{mes + 1:02d}"
 
+def periodo_anterior(mes_año: str) -> str:
+    """Devuelve el mes anterior en formato YYYY-MM."""
+    _validar_periodo(mes_año)
+    año, mes = (int(parte) for parte in mes_año.split("-"))
+    if mes == 1:
+        return f"{año - 1:04d}-12"
+    return f"{año:04d}-{mes - 1:02d}"
+
 def _validar_monto(monto: float) -> None:
     if not math.isfinite(monto) or monto < 0:
         raise ValueError("El monto debe ser un número finito mayor o igual a cero.")
@@ -184,8 +192,11 @@ def generar_pagos_del_mes(mes_año: str):
             """, (s_id, mes_año, monto))
         conn.commit()
 
-def obtener_pagos_mes(mes_año: str):
-    generar_pagos_del_mes(mes_año)
+def obtener_pagos_mes(mes_año: str, generar: bool = True):
+    if generar:
+        generar_pagos_del_mes(mes_año)
+    else:
+        _validar_periodo(mes_año)
     with _connection() as conn:
         cursor = conn.cursor()
         cursor.execute("""
@@ -258,3 +269,21 @@ def obtener_resumen_mes(mes_año: str):
         pendientes = cursor.fetchall()
 
         return pagados, pendientes
+
+
+def obtener_historial(limite: int = 12):
+    """Devuelve los últimos meses registrados con cantidad, pagados, total y total pagado."""
+    with _connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT mes_año,
+                   COUNT(*),
+                   SUM(pagado),
+                   SUM(monto),
+                   SUM(CASE WHEN pagado = 1 THEN monto ELSE 0 END)
+            FROM pagos_mes
+            GROUP BY mes_año
+            ORDER BY mes_año DESC
+            LIMIT ?
+        """, (limite,))
+        return cursor.fetchall()

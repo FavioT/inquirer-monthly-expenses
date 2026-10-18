@@ -5,10 +5,12 @@ Aplicación de terminal para organizar servicios recurrentes, registrar pagos po
 ## Funciones
 
 - Administra una lista de servicios recurrentes con su monto mensual estimado.
-- Modifica el nombre y monto de un servicio recurrente desde el próximo mes, conservando los períodos anteriores.
-- Marca o desmarca pagos desde un checklist interactivo por mes.
-- Consulta reportes con pagos realizados, pendientes y totales.
-- Muestra el avance mensual y el total estimado de los servicios.
+- Modifica el nombre y monto de un servicio recurrente desde este mes o el próximo, conservando los períodos anteriores.
+- Marca o desmarca pagos desde un checklist interactivo por mes, con un resumen de lo que cambió.
+- Muestra en la pantalla principal el avance del mes actual y los servicios pendientes.
+- Consulta reportes con pagos realizados, pendientes y totales, y navega entre meses.
+- Muestra un historial con el avance de los últimos meses.
+- Acepta montos como `25000`, `25.000` o `25.000,50`.
 - Presenta los importes con punto para miles y coma para decimales; por ejemplo, `$150.000,00`.
 - Mantiene el estado de pago separado para cada mes.
 
@@ -45,9 +47,19 @@ Inicia el menú:
 python main.py
 ```
 
-Desde el menú puedes marcar los pagos del mes actual o de otro período, ver reportes y servicios, agregar, modificar o eliminar servicios junto con su historial. Las modificaciones de un servicio recurrente se aplican desde el próximo mes; el monto y nombre de los meses anteriores se conservan.
+Desde el menú puedes marcar los pagos del mes actual, ver el detalle de cualquier mes y moverte al anterior o al siguiente, consultar el historial, y agregar, modificar o eliminar servicios. Al modificar un servicio eliges si el cambio aplica desde este mes o desde el próximo; el monto y nombre de los meses anteriores se conservan.
 
-En el checklist, usa las flechas para navegar, **Espacio** para marcar o desmarcar un pago y **Enter** para guardar.
+Atajos:
+
+| Tecla | Acción |
+| --- | --- |
+| ↑ / ↓ | Moverse entre opciones |
+| Espacio | Marcar o desmarcar un pago (checklist) |
+| Ctrl+A | Marcar todos los pagos (checklist) |
+| Ctrl+R | Invertir la selección (checklist) |
+| Enter | Confirmar o guardar |
+| Esc | Cancelar el formulario actual sin guardar |
+| Ctrl+C | Salir de la aplicación |
 
 ## Comandos
 
@@ -79,7 +91,7 @@ python main.py servicio-eliminar 1
 python main.py servicio-editar 1 "Internet" 30000
 ```
 
-Los períodos deben tener el formato `YYYY-MM`, con un mes entre `01` y `12`. Los montos deben ser números finitos mayores o iguales a cero.
+Los períodos deben tener el formato `YYYY-MM`, con un mes entre `01` y `12`. Los montos deben ser mayores o iguales a cero y pueden escribirse con punto para miles y coma para decimales (`25.000,50`).
 
 ## Datos y privacidad
 

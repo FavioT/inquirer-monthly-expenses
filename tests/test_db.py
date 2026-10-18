@@ -83,6 +83,28 @@ class DatabaseTests(unittest.TestCase):
     def test_next_period_handles_year_boundary(self):
         self.assertEqual(db.periodo_siguiente("2026-12"), "2027-01")
 
+    def test_previous_period_handles_year_boundary(self):
+        self.assertEqual(db.periodo_anterior("2027-01"), "2026-12")
+        self.assertEqual(db.periodo_anterior("2026-10"), "2026-09")
+
+    def test_reading_without_generating_does_not_create_rows(self):
+        db.agregar_servicio("Internet", 25000.0)
+
+        self.assertEqual(db.obtener_pagos_mes("2020-01", generar=False), [])
+        self.assertEqual(db.obtener_historial(), [])
+
+    def test_history_summarizes_each_month(self):
+        db.agregar_servicio("Internet", 100.0)
+        db.agregar_servicio("Luz", 50.0)
+        pago_id = db.obtener_pagos_mes("2026-09")[0][0]
+        db.toggle_pago(pago_id)
+        db.obtener_pagos_mes("2026-10")
+
+        self.assertEqual(db.obtener_historial(), [
+            ("2026-10", 2, 0, 150.0, 0.0),
+            ("2026-09", 2, 1, 150.0, 100.0),
+        ])
+
     def test_existing_database_gets_a_baseline_service_version(self):
         legacy_path = Path(self.temp_dir.name) / "legacy.db"
         with sqlite3.connect(legacy_path) as conn:

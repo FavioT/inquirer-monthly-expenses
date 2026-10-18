@@ -8,10 +8,18 @@ from rich.table import Table
 from datetime import datetime
 import db
 from cli_interactiva import menu_principal
-from formato import formatear_monto
+from formato import ICONO_ERROR, ICONO_OK, formatear_monto, parsear_monto
 
 app = typer.Typer(help="Control mensual de pagos recurrentes.")
 console = Console()
+
+def _monto(valor: str) -> float:
+    try:
+        return parsear_monto(valor)
+    except ValueError:
+        raise typer.BadParameter(
+            f"'{valor}' no es un monto válido. Usa por ejemplo 25000, 25.000 o 25.000,50."
+        )
 
 @app.callback()
 def setup():
@@ -20,17 +28,18 @@ def setup():
 @app.command("servicio-nuevo")
 def nuevo_servicio(
     nombre: str, 
-    monto_estimado: float = typer.Argument(0.0, help="Monto estimado mensual")
+    monto_estimado: str = typer.Argument("0", help="Monto estimado mensual (ej: 25000 o 25.000,50)")
 ):
     """
     Agrega un servicio recurrente a la plantilla.
     Ejemplo: python main.py servicio-nuevo "Internet" 25000
     """
+    monto = _monto(monto_estimado)
     try:
-        db.agregar_servicio(nombre, monto_estimado)
-        console.print(f"[bold green]✓[/bold green] Servicio '[bold]{nombre}[/bold]' agregado a la lista recurrente.")
+        db.agregar_servicio(nombre, monto)
+        console.print(f"[bold green]{ICONO_OK}[/bold green] Servicio '[bold]{nombre}[/bold]' agregado a la lista recurrente.")
     except sqlite3.IntegrityError:
-        console.print(f"[bold red]✗[/bold red] El servicio '[bold]{nombre}[/bold]' ya existe.")
+        console.print(f"[bold red]{ICONO_ERROR}[/bold red] El servicio '[bold]{nombre}[/bold]' ya existe.")
     except ValueError as error:
         raise typer.BadParameter(str(error)) from error
 
@@ -117,13 +126,13 @@ def marcar_desmarcar(pago_id: int, periodo: Optional[str] = None):
 
     exito = db.toggle_pago(pago_id)
     if exito:
-        console.print(f"[bold green]✓[/bold green] Estado del pago ID [bold]{pago_id}[/bold] actualizado.")
+        console.print(f"[bold green]{ICONO_OK}[/bold green] Estado del pago ID [bold]{pago_id}[/bold] actualizado.")
         # Muestra la tabla actualizada del mes correspondiente
         if not periodo:
             periodo = datetime.now().strftime("%Y-%m")
         ver_mes(periodo)
     else:
-        console.print(f"[bold red]✗[/bold red] No se encontró el registro con ID {pago_id}.")
+        console.print(f"[bold red]{ICONO_ERROR}[/bold red] No se encontró el registro con ID {pago_id}.")
 
 @app.command("servicio-eliminar")
 def borrar_servicio(servicio_id: int):
@@ -133,19 +142,19 @@ def borrar_servicio(servicio_id: int):
     """
     exito = db.eliminar_servicio(servicio_id)
     if exito:
-        console.print(f"[bold green]✓[/bold green] El servicio ID [bold]{servicio_id}[/bold] y su historial fueron eliminados.")
+        console.print(f"[bold green]{ICONO_OK}[/bold green] El servicio ID [bold]{servicio_id}[/bold] y su historial fueron eliminados.")
     else:
-        console.print(f"[bold red]✗[/bold red] No se encontró ningún servicio con el ID {servicio_id}.")
+        console.print(f"[bold red]{ICONO_ERROR}[/bold red] No se encontró ningún servicio con el ID {servicio_id}.")
 
 @app.command("servicio-editar")
-def editar_servicio(servicio_id: int, nombre: str, monto_estimado: float):
+def editar_servicio(servicio_id: int, nombre: str, monto_estimado: str):
     """
     Modifica un servicio recurrente desde el próximo mes.
     Ejemplo: python main.py servicio-editar 1 "Internet" 30000
     """
     desde_periodo = db.periodo_siguiente(datetime.now().strftime("%Y-%m"))
     try:
-        exito = db.actualizar_servicio(servicio_id, nombre, monto_estimado, desde_periodo)
+        exito = db.actualizar_servicio(servicio_id, nombre, _monto(monto_estimado), desde_periodo)
     except sqlite3.IntegrityError:
         raise typer.BadParameter(f"Ya existe un servicio llamado '{nombre}'.")
     except ValueError as error:
@@ -153,10 +162,10 @@ def editar_servicio(servicio_id: int, nombre: str, monto_estimado: float):
 
     if exito:
         console.print(
-            f"[bold green]✓[/bold green] Servicio actualizado desde [bold]{desde_periodo}[/bold]."
+            f"[bold green]{ICONO_OK}[/bold green] Servicio actualizado desde [bold]{desde_periodo}[/bold]."
         )
     else:
-        console.print(f"[bold red]✗[/bold red] No se encontró ningún servicio con el ID {servicio_id}.")
+        console.print(f"[bold red]{ICONO_ERROR}[/bold red] No se encontró ningún servicio con el ID {servicio_id}.")
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
